@@ -1,11 +1,6 @@
 # oh-my-note
 ### 1.Linux
 
-- [Oh-my-zsh]: ./Linux/oh-my-zsh.md	"Oh-my-zsh"
-
-- [Etc]: ./Linux/etc.md	"etc"
-
-- [./Linux/oh-my-zsh.md](Oh-my-zsh)
-
+- [oh-my-zsh](./Linux/oh-my-zsh.md)
 - [etc](./Linux/etc.md)
 
