@@ -5,3 +5,7 @@
 
 - [Etc]: ./Linux/etc.md	"etc"
 
+- [./Linux/oh-my-zsh.md](Oh-my-zsh)
+
+- [etc](./Linux/etc.md)
+
