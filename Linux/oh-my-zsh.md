@@ -35,6 +35,8 @@
 
 `ZSH_THEME="robbyrussell"`
 
+![](../pic/ohmyzsh.png)
+
 
 
 //todo
