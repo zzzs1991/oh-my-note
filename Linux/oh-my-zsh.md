@@ -37,6 +37,11 @@
 
 ![](../pic/ohmyzsh.png)
 
+### 6.安装字体
 
+`powerline`
+
+[GitHub]: https://github.com/powerline/fonts	"github"
 
 //todo
+
