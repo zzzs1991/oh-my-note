@@ -182,6 +182,57 @@ match => [“message”, “（？<request_time>\d+（？：\.\d+）？）”,�
         
 #### 1.4输出插件
 
+- 输出到elasticsearch
+
+```
+output {
+  elasticsearch {
+    host =>“192.168.0.2”
+    protocol =>“http”
+    index =>“logstash-%{type}-%{+YYYY.MM.dd}”
+    index_type =>“%{type}”
+    workers => 5
+    template_overwrite => true
+  }
+}
+```
+
+- 发送email
+
+    logstash-output-email
+    
+- 调用系统命令执行
+
+    logstash-output-exec
+    
+- 保存成文件
+
+- 报警发送到nagios
+
+- statsd
+    
+    统计信息
+    
+- stdout
+    
+    codec 和 worker
+    用来调试
+- TCP 发送数据
+    
+    不建议使用，建议使用消息队列
+    
+- 输出到HDFS
+
+### 2.场景示例
+
+
+#### 2.1Nginx访问日志
+
+
+#### 2.2Java日志
+
+    
+
 
         
     
