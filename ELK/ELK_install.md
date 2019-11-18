@@ -1,23 +1,9 @@
 ### kibana
 
-`rpm --import https://artifacts.elastic.co/GPG-KEY-elasticsearch`
 
-Create a file called kibana.repo in the /etc/yum.repos.d/ directory for RedHat based distributions, or in the /etc/zypp/repos.d/ directory for OpenSuSE based distributions, containing:
-
-```
-[kibana-7.x]
-name=Kibana repository for 7.x packages
-baseurl=https://artifacts.elastic.co/packages/7.x/yum
-gpgcheck=1
-gpgkey=https://artifacts.elastic.co/GPG-KEY-elasticsearch
-enabled=1
-autorefresh=1
-type=rpm-md
-```
-install
-```shell script
-sudo yum install kibana
-```
+打开小飞机
+下载elk套件
+解压
 ### es
 
 
