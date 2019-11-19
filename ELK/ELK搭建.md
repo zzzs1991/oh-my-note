@@ -84,14 +84,48 @@ elasticsearch.hosts: ["http://localhost:9200"]
 kibana.index: ".kibana"
 ```
 - logstash
-```shell script
 
+
+```shell script
+input {
+    kafka {
+        bootstrap_servers => "192.168.0.111:9091"
+        topics => ["logtest"]
+        codec => json {
+            charset => "UTF-8"
+        }
+    }
+    # 如果有其他数据源，直接在下面追加
+}
+
+filter {
+    # 将message转为json格式
+    if [type] == "log" {
+        json {
+            source => "message"
+            target => "message"
+        }
+    }
+}
+
+output {
+    # 处理后的日志落到本地文件
+    file {
+        path => "/config-dir/test.log"
+        flush_interval => 0
+    }
+    # 处理后的日志入es
+    elasticsearch {
+        hosts => "192.168.0.112:9201"
+        index => "logstash-%{[type]}-%{+YYYY.MM.dd}"
+  }
+}
 
 ```
 - kafka
 ```shell script
-
-
+bin/zookeeper-server-start.sh config/zookeeper.properties
+bin/kafka-server-start.sh config/server.properties
 ```
 ### 3.配置生产服务器
 - 配置filebeat
@@ -100,14 +134,53 @@ kibana.index: ".kibana"
 - 分发filebeat
 ```shell script
 
-
+scp -r /home/newcore/filebeat-7.4.2 newcore@172.16.128.172:/home/newcore/elk
 ```
 
 - filebeat
 
 
-- 
-
 - 启动
+
+
+```shell script
+./filebeat -e -c filebeat.yml -d 
+```
+
+```shell script
+filebeat.inputs:
+- type: log
+  enabled: true
+  tail_files: true
+  paths:
+    - /data/www.example.com_clb_log
+
+output.kafka:
+  hosts: ["10.105.100.10:9092"]
+  topic: "www.example.com"
+
+```
+
+
+```shell script
+PID=$(ps -ef | grep elasticsearch | grep -v grep | awk '{ print $2 }')
+if [ -z "$PID" ]
+then
+    echo elasticsearch is already stopped
+else
+    echo kill $PID
+    kill $PID
+fi
+nohup 
+```
+
+
+
+```shell script
+vim /usr/local/bin/start_es.sh
+
+nohup /home/newcore/elasticsearch-7.4.2/bin/elasticsearch > /home/newcore/elk/
+
+```
 
 
