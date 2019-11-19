@@ -66,6 +66,18 @@ tar -zxvf xxxx.7.4.2.tar.gz -C /home/newcore/
 ### 2.配置logcollector01
 
 - elasticsearch
+
+在【启动】bin>./elasticsearch 的时候
+【报错】max virtual memory areas vm.max_map_count [65530] is too low, increase to at least [262144]
+
+解决:
+1)sudo vi /etc/sysctl.conf 文件最后添加一行
+
+作者：Sam_L
+链接：https://www.jianshu.com/p/402f7dfceab6
+来源：简书
+著作权归作者所有。商业转载请联系作者获得授权，非商业转载请注明出处。
+
 ```shell script
 vim /home/newcore/elasticsearch-7.4.2/config/elasticsearch.yml
 
@@ -127,18 +139,12 @@ output {
 bin/zookeeper-server-start.sh config/zookeeper.properties
 bin/kafka-server-start.sh config/server.properties
 ```
+日志目录 kafka目录/ server.log
+
 ### 3.配置生产服务器
 - 配置filebeat
 
-
-- 分发filebeat
-```shell script
-
-scp -r /home/newcore/filebeat-7.4.2 newcore@172.16.128.172:/home/newcore/elk
-```
-
 - filebeat
-
 
 - 启动
 
@@ -153,12 +159,30 @@ filebeat.inputs:
   enabled: true
   tail_files: true
   paths:
-    - /data/www.example.com_clb_log
+    - /home/newcore/www/coreplus/logs/user-center.log
+  multiline.pattern: '^\['
+  multiline.negate: true
+  multiline.match: after
+
+tags: ["demo1"]
 
 output.kafka:
-  hosts: ["10.105.100.10:9092"]
-  topic: "www.example.com"
+  hosts: ["172.16.128.191:9092"]
+  topic: "logcollector"
+  partition.round_robin:
+    reachable_only: true
+  required_acks: 1
+  compression: gzip
+  max_message_bytes: 1000000 # 10MB
 
+logging.level: debug
+logging.to_files: true
+logging.files:
+  path: /home/newcore/elk/
+  name: filebeat.log
+  rotateeverybytes: 52428800 # 50MB
+  keepfiles: 5
+  
 ```
 
 
@@ -183,4 +207,11 @@ nohup /home/newcore/elasticsearch-7.4.2/bin/elasticsearch > /home/newcore/elk/
 
 ```
 
+
+logstash
+
+```shell script
+
+
+```
 
