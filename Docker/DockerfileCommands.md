@@ -287,8 +287,8 @@ CMD [ "exec", "gosu", "redis", "redis-server" ]
 ### HEALTHCHECK 健康检查
 格式：
 
-HEALTHCHECK [选项] CMD <命令>：设置检查容器健康状况的命令
-HEALTHCHECK NONE：如果基础镜像有健康检查指令，使用这行可以屏蔽掉其健康检查指令
+- `HEALTHCHECK [选项] CMD <命令>`：设置检查容器健康状况的命令
+- `HEALTHCHECK NONE`：如果基础镜像有健康检查指令，使用这行可以屏蔽掉其健康检查指令
 HEALTHCHECK 指令是告诉 Docker 应该如何进行判断容器的状态是否正常，这是 Docker 1.12 引入的新指令。
 
 在没有 HEALTHCHECK 指令前，Docker 引擎只可以通过容器内主进程是否退出来判断容器是否状态异常。很多情况下这没问题，但是如果程序进入死锁状态，或者死循环状态，应用进程并不退出，但是该容器已经无法提供服务了。在 1.12 以前，Docker 不会检测到容器的这种状态，从而不会重新调度，导致可能会有部分容器已经无法提供服务了却还在接受用户请求。
@@ -307,33 +307,38 @@ HEALTHCHECK 支持下列选项：
 在 HEALTHCHECK [选项] CMD 后面的命令，格式和 ENTRYPOINT 一样，分为 shell 格式，和 exec 格式。命令的返回值决定了该次健康检查的成功与否：0：成功；1：失败；2：保留，不要使用这个值。
 
 假设我们有个镜像是个最简单的 Web 服务，我们希望增加健康检查来判断其 Web 服务是否在正常工作，我们可以用 curl 来帮助判断，其 Dockerfile 的 HEALTHCHECK 可以这么写：
-
+```shell script
 FROM nginx
 RUN apt-get update && apt-get install -y curl && rm -rf /var/lib/apt/lists/*
 HEALTHCHECK --interval=5s --timeout=3s \
   CMD curl -fs http://localhost/ || exit 1
+```
 这里我们设置了每 5 秒检查一次（这里为了试验所以间隔非常短，实际应该相对较长），如果健康检查命令超过 3 秒没响应就视为失败，并且使用 curl -fs http://localhost/ || exit 1 作为健康检查命令。
 
 使用 docker build 来构建这个镜像：
-
+```shell script
 $ docker build -t myweb:v1 .
+```
 构建好了后，我们启动一个容器：
-
+```shell script
 $ docker run -d --name web -p 80:80 myweb:v1
+```
 当运行该镜像后，可以通过 docker container ls 看到最初的状态为 (health: starting)：
-
+```shell script
 $ docker container ls
 CONTAINER ID        IMAGE               COMMAND                  CREATED             STATUS                            PORTS               NAMES
 03e28eb00bd0        myweb:v1            "nginx -g 'daemon off"   3 seconds ago       Up 2 seconds (health: starting)   80/tcp, 443/tcp     web
+```
 在等待几秒钟后，再次 docker container ls，就会看到健康状态变化为了 (healthy)：
-
+```shell script
 $ docker container ls
 CONTAINER ID        IMAGE               COMMAND                  CREATED             STATUS                    PORTS               NAMES
 03e28eb00bd0        myweb:v1            "nginx -g 'daemon off"   18 seconds ago      Up 16 seconds (healthy)   80/tcp, 443/tcp     web
+```
 如果健康检查连续失败超过了重试次数，状态就会变为 (unhealthy)。
 
 为了帮助排障，健康检查命令的输出（包括 stdout 以及 stderr）都会被存储于健康状态里，可以用 docker inspect 来查看。
-
+```shell script
 $ docker inspect --format '{{json .State.Health}}' web | python -m json.tool
 {
     "FailingStreak": 0,
@@ -347,15 +352,16 @@ $ docker inspect --format '{{json .State.Health}}' web | python -m json.tool
     ],
     "Status": "healthy"
 }
-# ONBUILD 为他人作嫁衣
-格式：ONBUILD <其它指令>。
+```
+### ONBUILD 为他人作嫁衣
+格式：`ONBUILD <其它指令>`。
 
 ONBUILD 是一个特殊的指令，它后面跟的是其它指令，比如 RUN, COPY 等，而这些指令，在当前镜像构建时并不会被执行。只有当以当前镜像为基础镜像，去构建下一级镜像的时候才会被执行。
 
 Dockerfile 中的其它指令都是为了定制当前镜像而准备的，唯有 ONBUILD 是为了帮助别人定制自己而准备的。
 
 假设我们要制作 Node.js 所写的应用的镜像。我们都知道 Node.js 使用 npm 进行包管理，所有依赖、配置、启动信息等会放到 package.json 文件里。在拿到程序代码后，需要先进行 npm install 才可以获得所有需要的依赖。然后就可以通过 npm start 来启动应用。因此，一般来说会这样写 Dockerfile：
-
+```shell script
 FROM node:slim
 RUN mkdir /app
 WORKDIR /app
@@ -363,28 +369,31 @@ COPY ./package.json /app
 RUN [ "npm", "install" ]
 COPY . /app/
 CMD [ "npm", "start" ]
+```
 把这个 Dockerfile 放到 Node.js 项目的根目录，构建好镜像后，就可以直接拿来启动容器运行。但是如果我们还有第二个 Node.js 项目也差不多呢？好吧，那就再把这个 Dockerfile 复制到第二个项目里。那如果有第三个项目呢？再复制么？文件的副本越多，版本控制就越困难，让我们继续看这样的场景维护的问题。
 
 如果第一个 Node.js 项目在开发过程中，发现这个 Dockerfile 里存在问题，比如敲错字了、或者需要安装额外的包，然后开发人员修复了这个 Dockerfile，再次构建，问题解决。第一个项目没问题了，但是第二个项目呢？虽然最初 Dockerfile 是复制、粘贴自第一个项目的，但是并不会因为第一个项目修复了他们的 Dockerfile，而第二个项目的 Dockerfile 就会被自动修复。
 
 那么我们可不可以做一个基础镜像，然后各个项目使用这个基础镜像呢？这样基础镜像更新，各个项目不用同步 Dockerfile 的变化，重新构建后就继承了基础镜像的更新？好吧，可以，让我们看看这样的结果。那么上面的这个 Dockerfile 就会变为：
-
+```shell script
 FROM node:slim
 RUN mkdir /app
 WORKDIR /app
 CMD [ "npm", "start" ]
+```
 这里我们把项目相关的构建指令拿出来，放到子项目里去。假设这个基础镜像的名字为 my-node 的话，各个项目内的自己的 Dockerfile 就变为：
-
+```shell script
 FROM my-node
 COPY ./package.json /app
 RUN [ "npm", "install" ]
 COPY . /app/
+```
 基础镜像变化后，各个项目都用这个 Dockerfile 重新构建镜像，会继承基础镜像的更新。
 
 那么，问题解决了么？没有。准确说，只解决了一半。如果这个 Dockerfile 里面有些东西需要调整呢？比如 npm install 都需要加一些参数，那怎么办？这一行 RUN 是不可能放入基础镜像的，因为涉及到了当前项目的 ./package.json，难道又要一个个修改么？所以说，这样制作基础镜像，只解决了原来的 Dockerfile 的前4条指令的变化问题，而后面三条指令的变化则完全没办法处理。
 
 ONBUILD 可以解决这个问题。让我们用 ONBUILD 重新写一下基础镜像的 Dockerfile:
-
+```shell script
 FROM node:slim
 RUN mkdir /app
 WORKDIR /app
@@ -392,7 +401,9 @@ ONBUILD COPY ./package.json /app
 ONBUILD RUN [ "npm", "install" ]
 ONBUILD COPY . /app/
 CMD [ "npm", "start" ]
+```
 这次我们回到原始的 Dockerfile，但是这次将项目相关的指令加上 ONBUILD，这样在构建基础镜像的时候，这三行并不会被执行。然后各个项目的 Dockerfile 就变成了简单地：
-
+```shell script
 FROM my-node
+```
 是的，只有这么一行。当在各个项目目录中，用这个只有一行的 Dockerfile 构建镜像时，之前基础镜像的那三行 ONBUILD 就会开始执行，成功的将当前项目的代码复制进镜像、并且针对本项目执行 npm install，生成应用镜像
