@@ -35,3 +35,31 @@ git config --global user.name 'nitrogen'
 git config --global user.email yourEmail
 ```
 
+#### git 连接超时
+用ssh连接git有时会报错
+```shell script
+ssh: connect to host github.com port 22: Connection timed out
+
+fatal: Could not read from remote repository.
+
+Please make sure you have the correct access rights
+
+and the repository exists.
+```
+测试 ssh 连接 失败
+```shell script
+ssh -T get@github.com
+```
+测试https连接
+```shell script
+$ ssh -T -p 443 git@ssh.github.com
+```
+
+```shell script
+$ git config --local -e 
+将
+url = git@github.com:你的用户名/仓库名.git
+改为
+url = https://github.com/你的用户名/仓库名.git
+```
+
