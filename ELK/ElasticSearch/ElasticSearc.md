@@ -281,6 +281,52 @@ es允许一次创建多个文档,从而减少网络传输的开销,提升写入�
         
         ```
         
+- 批量查询文档API
+
+es允许一次查询多个文档
+
+    - endpoint为 _mget
+    
+```shell script
+GET /_mget
+{
+  "docs":[
+    {
+      "_index": "test_index",
+      "_id": "4"
+    },
+    {
+      "_index": "test_index",
+      "_id": "6"
+    }]
+}
+
+
+{
+  "docs" : [
+    {
+      "_index" : "test_index",
+      "_type" : "doc",
+      "_id" : "4",
+      "_version" : 1,
+      "_seq_no" : 4,
+      "_primary_term" : 1,
+      "found" : true,
+      "_source" : {
+        "username" : "alfred",
+        "age" : 1
+      }
+    },
+    {
+      "_index" : "test_index",
+      "_type" : "doc",
+      "_id" : "8",
+      "found" : false
+    }
+  ]
+}
+```
+        
         
 
 
