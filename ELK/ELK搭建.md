@@ -73,10 +73,6 @@ tar -zxvf xxxx.7.4.2.tar.gz -C /home/newcore/
 解决:
 1)sudo vi /etc/sysctl.conf 文件最后添加一行
 
-作者：Sam_L
-链接：https://www.jianshu.com/p/402f7dfceab6
-来源：简书
-著作权归作者所有。商业转载请联系作者获得授权，非商业转载请注明出处。
 
 ```shell script
 vim /home/newcore/elasticsearch-7.4.2/config/elasticsearch.yml
@@ -101,8 +97,8 @@ kibana.index: ".kibana"
 ```shell script
 input {
     kafka {
-        bootstrap_servers => "192.168.0.111:9091"
-        topics => ["logtest"]
+        bootstrap_servers => "localhost:9092"
+        topics => ["logcollector"]
         codec => json {
             charset => "UTF-8"
         }
@@ -111,13 +107,16 @@ input {
 }
 
 filter {
+  grok {
+    match => { "message" => "%{IP:client} %{WORD:method} %{URIPATHPARAM:request} %{NUMBER:bytes} %{NUMBER:duration}" }
+  }
     # 将message转为json格式
-    if [type] == "log" {
-        json {
-            source => "message"
-            target => "message"
-        }
-    }
+#    if [type] == "log" {
+#        json {
+#            source => "message"
+#            target => "message"
+#        }
+#    }
 }
 
 output {
@@ -128,7 +127,7 @@ output {
     }
     # 处理后的日志入es
     elasticsearch {
-        hosts => "192.168.0.112:9201"
+        hosts => "localhost:9200"
         index => "logstash-%{[type]}-%{+YYYY.MM.dd}"
   }
 }
@@ -164,7 +163,7 @@ filebeat.inputs:
   multiline.negate: true
   multiline.match: after
 
-tags: ["demo1"]
+# tags: ["demo1"]
 
 output.kafka:
   hosts: ["172.16.128.191:9092"]
@@ -174,7 +173,7 @@ output.kafka:
   required_acks: 1
   compression: gzip
   max_message_bytes: 1000000 # 10MB
-
+# debug
 logging.level: debug
 logging.to_files: true
 logging.files:
@@ -184,6 +183,46 @@ logging.files:
   keepfiles: 5
   
 ```
+```shell script
+{
+  "@timestamp": "2019-11-28T08:32:58.597Z",
+  "@metadata": {
+    "beat": "filebeat",
+    "type": "_doc",
+    "version": "7.4.2"
+  },
+  "message": "[ERROR] [inventory] 2019-11-28 16:32:56 [com.netflix.discovery.shared.transport.decorator.RedirectingEurekaHttpClient-DiscoveryClient-InstanceInfoReplicator-0] - Request execution error \n com.sun.jersey.api.client.ClientHandlerException: java.net.ConnectException: Connection refused: connect\n\tat com.sun.jersey.client.apache4.ApacheHttpClient4Handler.handle(ApacheHttpClient4Handler.java:187)\n\tat com.sun.jersey.api.client.filter.GZIPContentEncodingFilter.handle(GZIPContentEncodingFilter.java:123)\n\tat com.netflix.discovery.EurekaIdentityHeaderFilter.handle(EurekaIdentityHeaderFilter.java:27)\n\tat com.sun.jersey.api.client.Client.handle(Client.java:652)\n\tat com.sun.jersey.api.client.WebResource.handle(WebResource.java:682)\n\tat com.sun.jersey.api.client.WebResource.access$200(WebResource.java:74)\n\tat com.sun.jersey.api.client.WebResource$Builder.post(WebResource.java:570)\n\tat com.netflix.discovery.shared.transport.jersey.AbstractJerseyEurekaHttpClient.register(AbstractJerseyEurekaHttpClient.java:56)\n\tat com.netflix.discovery.shared.transport.decorator.EurekaHttpClientDecorator$1.execute(EurekaHttpClientDecorator.java:59)\n\tat com.netflix.discovery.shared.transport.decorator.MetricsCollectingEurekaHttpClient.execute(MetricsCollectingEurekaHttpClient.java:73)\n\tat com.netflix.discovery.shared.transport.decorator.EurekaHttpClientDecorator.register(EurekaHttpClientDecorator.java:56)\n\tat com.netflix.discovery.shared.transport.decorator.EurekaHttpClientDecorator$1.execute(EurekaHttpClientDecorator.java:59)\n\tat com.netflix.discovery.shared.transport.decorator.RedirectingEurekaHttpClient.executeOnNewServer(RedirectingEurekaHttpClient.java:118)\n\tat com.netflix.discovery.shared.transport.decorator.RedirectingEurekaHttpClient.execute(RedirectingEurekaHttpClient.java:79)\n\tat com.netflix.discovery.shared.transport.decorator.EurekaHttpClientDecorator.register(EurekaHttpClientDecorator.java:56)\n\tat com.netflix.discovery.shared.transport.decorator.EurekaHttpClientDecorator$1.execute(EurekaHttpClientDecorator.java:59)\n\tat com.netflix.discovery.shared.transport.decorator.RetryableEurekaHttpClient.execute(RetryableEurekaHttpClient.java:119)\n\tat com.netflix.discovery.shared.transport.decorator.EurekaHttpClientDecorator.register(EurekaHttpClientDecorator.java:56)\n\tat com.netflix.discovery.shared.transport.decorator.EurekaHttpClientDecorator$1.execute(EurekaHttpClientDecorator.java:59)\n\tat com.netflix.discovery.shared.transport.decorator.SessionedEurekaHttpClient.execute(SessionedEurekaHttpClient.java:77)\nCaused by: java.net.ConnectException: Connection refused: connect\n\tat java.net.DualStackPlainSocketImpl.waitForConnect(Native Method)\n\tat java.net.DualStackPlainSocketImpl.socketConnect(DualStackPlainSocketImpl.java:85)\n\tat java.net.AbstractPlainSocketImpl.doConnect(AbstractPlainSocketImpl.java:350)\n\tat java.net.AbstractPlainSocketImpl.connectToAddress(AbstractPlainSocketImpl.java:206)\n\tat java.net.AbstractPlainSocketImpl.connect(AbstractPlainSocketImpl.java:188)\n\tat java.net.PlainSocketImpl.connect(PlainSocketImpl.java:172)\n\tat java.net.SocksSocketImpl.connect(SocksSocketImpl.java:392)\n\tat java.net.Socket.connect(Socket.java:589)\n\tat org.apache.http.conn.scheme.PlainSocketFactory.connectSocket(PlainSocketFactory.java:121)\n\tat org.apache.http.impl.conn.DefaultClientConnectionOperator.openConnection(DefaultClientConnectionOperator.java:180)\n\tat org.apache.http.impl.conn.AbstractPoolEntry.open(AbstractPoolEntry.java:144)\n\tat org.apache.http.impl.conn.AbstractPooledConnAdapter.open(AbstractPooledConnAdapter.java:134)\n\tat org.apache.http.impl.client.DefaultRequestDirector.tryConnect(DefaultRequestDirector.java:610)\n\tat org.apache.http.impl.client.DefaultRequestDirector.execute(DefaultRequestDirector.java:445)\n\tat org.apache.http.impl.client.AbstractHttpClient.doExecute(AbstractHttpClient.java:835)\n\tat org.apache.http.impl.client.CloseableHttpClient.execute(CloseableHttpClient.java:118)\n\tat org.apache.http.impl.client.CloseableHttpClient.execute(CloseableHttpClient.java:56)\n\tat com.sun.jersey.client.apache4.ApacheHttpClient4Handler.handle(ApacheHttpClient4Handler.java:173)\n\tat com.sun.jersey.api.client.filter.GZIPContentEncodingFilter.handle(GZIPContentEncodingFilter.java:123)\n\tat com.netflix.discovery.EurekaIdentityHeaderFilter.handle(EurekaIdentityHeaderFilter.java:27)\n ",
+  "input": {
+    "type": "log"
+  },
+  "ecs": {
+    "version": "1.1.0"
+  },
+  "host": {
+    "name": "WINDOWS-TFRODU8"
+  },
+  "agent": {
+    "ephemeral_id": "f273ae84-552a-49b2-86fc-a042ffdd4769",
+    "hostname": "WINDOWS-TFRODU8",
+    "id": "a71ede78-e1fa-48e0-916e-4953775bba49",
+    "version": "7.4.2",
+    "type": "filebeat"
+  },
+  "log": {
+    "offset": 1359162,
+    "file": {
+      "path": "D:\\elklog\\newcore-error.log"
+    },
+    "flags": [
+      "multiline"
+    ]
+  }
+}
+
+
+```
+
+
 
 
 ```shell script
