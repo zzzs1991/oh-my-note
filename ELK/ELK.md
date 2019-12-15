@@ -485,7 +485,8 @@ cd /usr/local
 
 wget https://artifacts.elastic.co/downloads/elasticsearch/elasticsearch-7.5.0-linux-x86_64.tar.gz
 
-tar -zxvg https://artifacts.elastic.co/downloads/elasticsearch/elasticsearch-7.5.0-linux-x86_64.tar.gz
+tar -zxvf
+https://artifacts.elastic.co/downloads/elasticsearch/elasticsearch-7.5.0-linux-x86_64.tar.gz
 
 mv elasticsearch-7.5.0-linux-x86/ elasticsearch/
 
