@@ -17,12 +17,14 @@
 3. 构建过程
 
 ```sh
+# 没有选择namespace，直接退出构建
 if [ "$namespace" = "请选择" ];
 then 
 	exit 1 
 fi
 ```
 ```sh
+# 拉取对应分支代码
 echo  '[INFO] git pull'
 
 git fetch --all
@@ -32,16 +34,19 @@ git checkout $branch
 git reset --hard origin/$branch
 ```
 ```sh
+# docker 构建
 echo '[INFO] begin build image ...'
 mvn clean package docker:build -DpushImageTag -DdockerImageTags=$branch  -Dmaven.test.skip=true -P docker
 ```
 ```sh
+# 是否重启项目
 if [ "$restart" = "false" ];
 then 
 	exit 0 
 fi
 ```
 ```sh
+# k8s 
 echo '[INFO] restart rancher server ...'
 
 
