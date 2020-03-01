@@ -519,7 +519,7 @@ day 32
 
 ### Day 33
 
-```
+```markdown
 day 33 
 如何正确的显示随机消息
 在一个10000个单词的表中随机选取三个
@@ -801,7 +801,7 @@ select * from words limit @Z, 1;
 
 ### Day 36
 
-```
+```markdown
 MySQL是如何保证主备一致的
 主A和备B，虽然B没有备直接访问，但还是建议设置为readonly的。
 	- 运营类的查询可能会放备库做
@@ -835,6 +835,195 @@ bin log 有三种格式
 	2. binlog重放的过程中，生成server id 与原来的bin log中的server id相同
 	3. 收到日志先判断server id 跟自己相同则直接丢弃
 
+
+```
+
+### Day 37
+
+```markdown
+day 37
+mysql怎么保证高可用的
+
+主备延迟
+    - 主库A执行完一个事务，写入binlog，T1
+    - 传给备库B，B接收完，T2
+    - B执行完这个事务，T3
+    - 主备延迟 = T3-T1
+  show slave status命令会展示seconds_behind_master
+  
+主备延迟最直接的表现，备库消费中转日志(relay log)的速度，比主库生产binlog的速度要慢。
+
+主备延迟产生的原因
+	1. 备库比主库配置低，现在少见
+	2. 备库压力大
+		- 一主多从
+		- 将binlog输出到外部系统，让其提供统计类查询能力
+	3. 大事务
+		主库上必须执行完事务才会写入binlog，再传给备库
+			- delete大量的数据
+			- 大表ddl
+	4. 备库的并行复制能力
+	
+主备切换的策略
+	- 可靠性优先 建议
+	- 可用性优先
+
+```
+
+### Day 38
+```markdown
+day 38
+备库为什么会延迟好几个小时
+MySQL 5.6之前都是单线程执行relay log，因此在主库并发高，TPS高时，会出现严重的主备延迟
+5.7之后开始多线程复制机制，sql_thread变为coordinator线程，负责读取日志和分发事务，真正执行日志的是worker线程
+- 由slave_parallel_workers决定
+- 8-16最好(32核虚拟机情况)
+
+
+1. 可以按照轮训的方式分发事务吗
+   不行，事务先后顺序可能会不同，导致主备不一致
+2. 同一个事务的更新语句能发给不同的worker来执行吗
+   不行，破坏了事务的隔离性
+
+所以，coordinator在分发事务的时候，要遵循一下两点
+1. 不能造成更新覆盖，更新同一行的事务必须在一个worker中
+2. 同一个事务不能被拆开。
+
+5.5版本丁奇自己实现的分发逻辑
+1. 按表分发
+每个worker对应一个hash table，用于表示当前这个worker正在执行的事务队列所涉及到的表
+key database+table
+value 修改这个表的事务数量
+- 如果新事务跟所有worker都不冲突，分配一个空闲的worker
+- 如果跟多于一个的worker冲突，等待
+- 如果仅和一个worker冲突，分配到该worker
+
+2. 按行分发
+需要考虑唯一键
+在hash table中存
+- 库 表 主键 行
+- 库 表 唯一键 行
+
+消耗更多计算资源
+binlog必须时row格式的
+必须有主键
+不能有外键
+
+3. MySQL 5.6 并行复制策略
+按库分发，简单高效，但适用场景少
+
+4. mariaDB的并行复制策略
+参考redo log组提交优化
+- 能够在同一组提交的事务，一定不会修改同一行
+- 在主库可以并发的，在备库也可以并发
+
+但是还是有区别的，在主库上，一组事务commit之后，另一组事务处于running，很快就会commit，而在从库上，做完一组commit，才会取下一组，吞吐量有差别。
+
+5. 5.7的策略
+通过slave_parallel_type区分
+- DATABASE 按库分发
+- LOGICAL_CLOCK maria方案的优化
+
+处于prepare状态的事务，在备库是可以并行的
+处于prepare和commit的事务是可以并行的
+处于running状态的事务是不可以并行的。
+
+利用binlog_group_commit_sync_delay和binlog_group_commit_sync_no_delay_count来制造更多同时处于prepare状态的事务
+
+6. 5.7.22的策略
+基于writeset的并行复制
+增加了binlog-transaction-dependency-tracking来控制是否启用
+  - COMMIT_ORDER 5.7策略
+  - WRITESET 按行分发
+  - WRITESET_SESSION 保证顺序
+
+writeset是主库直接写入到binlog里的，不用读取计算
+```
+
+### Day 39
+```markdown
+day 39
+主库出问题了，从库怎么办
+AA'互为主备BCD从指向A，A出问题，切换到A'
+1. 基于位点的主备切换
+通过change master命令
+有六个参数host,port,username,password,log_file,log_pos
+需要找AA'之间的同步位点，很难精确取到，只能取个范围。
+- 等A'将relay log执行完
+- show master status，看A'的file和positon
+- 取A的故障时刻T
+- 用mysqlbinlog工具分析A'的file，得到T时刻的位点
+
+会有一些重复的事务，在从库上需要跳过。
+- 主动跳过一个事务 set global sql_slave_skip_counter=n;start slave;跳过n个事务
+- slave_skip_errors跳过指定错误，1062插入数据唯一键错误，1032删除数据找不到行
+
+2. GTID
+global transaction identifier即全局事务id，是在事务提交时生成的。
+GTID=server_uuid:gno
+而官方文档里是GTID=source_id:transaction_id
+但是这容易产生误解，因为transaction_id在回滚时也会增加，而gno在提交事务时才生成，时单调递增的。
+通过在启动时设置gtid_mode=on enforce_gtid_consistency=on
+
+3. 基于GTID的主备切换
+change master to
+master_host=
+master_port=
+master_user=
+master-password=
+master_auto_position=1
+即使用GTID来进行主备切换
+```
+
+### Day 40
+```markdown
+读写分离有哪些坑
+一主多从就是读写分离的基本结构
+读写分离主要为了分摊主库的压力
+会选择在中间做proxy来做负载均衡和路由
+proxy也是趋势
+1. 过期读问题
+存在主从延迟，客户端更新事务之后立马查询，会读到没有更新的数据。
+2. 过期读的解决方案
+
+- 强制走主库
+  必须读新数据的，强制走主库，其他走从库
+- sleep
+  直接sleep或通过直接将更新内容返回前端，第一时间不做查询
+- 判断主备有无延迟方案
+  通过seconds_behind_master是否为0
+  通过对比位点
+  通过对比GTID
+  但是不精确，会有binlog还没传到从库的时候
+- 配合semi-sync
+  半同步复制
+  - 事务提交时，主库把binlog发给从库
+  - 从库收到binlog后，返回给主库一个ack
+  - 主库收到ack后，才返回给客户端事务完成
+  在一主多从的时候，会出现过期读
+  在持续延迟的情况，会出现过度等待
+- 等主库位点
+  select master_pos_wait(file,pos[,timeout])
+  在从库上执行，等待主库file，pos上的事务timeout秒，返回从执行命令开始，到执行到此为止，一共多少事务M
+  - 异常返回null
+  - 超时 -1
+  - 已经执行过 0
+  1. 在trx1执行后，立刻show master status 得到主库file，pos
+  2. 选定一个从库执行查询
+  3. 在从库上执行select_master_pos_wait(file,position,1)
+  4. 如果返回值是>=0的正整数，在这个从库上执行查询
+  5. 否则到主库上查询
+- 等GTID
+  select wait_for_executed_gtid_set(gtid_set,1)
+  - 等待，知道这个库执行的事务包含传入的GTID_set,返回0
+  - 超时返回1
+  1. trx1事务执行完成后，从返回中获取GITD，即gtid1
+  2. 选定一个从库执行查询
+  3. 在从库上执行select wait_for_executed_gtid_set(gtid1,1)
+  4. 返回值是0，在此库执行查询
+  5. 否则到主库上查
+  将session_track_gtids设为OWN_GTID
+  通过mysql_session_track_get_first从返回解析出GTID即可
 
 ```
 

@@ -1,0 +1,240 @@
+1.网站
+    hexo
+    vuepress
+2.有道无术，术尚可求
+3.开口合里最单依
+    -开闭原则
+    -接口隔离原则
+    -组合聚合原则
+    -里氏替换原则
+    -最少知识原则
+    -单一职责原则
+    -依赖倒置原则
+4.重构原则
+    -事不过三，三则重构
+5.微服务的四大问题
+    -客户端如何访问这些服务
+    -每个服务之间如何通信  
+    -如此多的服务如何实现
+    -服务挂了如何解决
+6.方案
+    spring boot + spring cloud netflix
+    spring boot + dubbo + zookeeper
+    spring boot + spring cloud alibaba
+    istio
+7.两个能力
+    独立解决问题的能力
+    独立自主学习的能力
+8.公司发展脉络
+    -入门 搭架子 做项目 微服务架构
+    -发展期 大数据 精准营销
+    -大数据 人工只能
+    -区块链
+9.微服务
+    -service mesh
+    -istio
+10.大数据
+    基于微服务架构的BI商业智能大数据解决方案
+    -计算引擎
+        Hadoop
+        Spark
+    -数据仓库
+        es
+        hbase phoenix
+    -ETL
+        spoon
+        kettle
+    -流式计算  
+        storm
+        flink
+        blink
+    -数据可视化
+        powerbi
+11.人工智能
+    tensorflow
+12.区块链
+    hyperledger
+    ethereum
+13.全栈
+    云计算
+    微服务
+    前后分离
+    大数据
+    人工智能
+    区块链
+14.
+    人只能接受教训，不能接受经验
+15.
+    站在更高的角度
+    不要总是埋头耕地，也要抬头看天
+16.五年成为技术总监
+    三年成为分布式架构师
+17.《学会提问》
+    批判性思维
+        批判性思维是一种思维习惯，是对思考对思考
+    最有效的教育方法不是告诉人们答案，而是向他们提问
+18.有道无术，术尚可求，有术无道，止于术
+19.产品思维
+    看山是山
+        学会借用
+            看表象
+    看山不是山
+        学会遗忘
+            看本质
+    看山还是山
+        学会学习
+            前两者结合产生新的知识
+20.
+    道家思想修今生
+        技术的修炼
+    佛家思想修来世
+        产品的迭代
+
+21.微服务架构类比
+    水疗会所
+        你是服务消费者
+        技师是服务提供者
+        注册中心是会所
+        缓存
+            redis
+        缓存服务
+            8号技师，提供服务
+        缓存穿透
+            8号技师，离职了
+        缓存击穿
+            8号技师，通知技师
+        缓存雪崩
+            8，9，10号技师都不在
+        熔断机制
+            警察来了
+        高可用，高性能，高并发
+            8，9轮训，
+22.zookeeper是分布式锁的框架
+    不同进程访问同一资源时，可以顺序的访问
+    create
+    delete
+    set
+    data
+    getdata
+
+    watch 观察者
+    zookeeper 
+        - 服务注册与发现
+        - 分布式锁框架
+    zookeeper的高可用集群
+        数据不同步问题
+            主从
+            读写分离
+            崩溃恢复 选举
+    znode节点状态
+        选举
+        从
+        主
+    ZAB zookeeper atomic broadcast
+    两阶段提交
+        强一致性
+        弱一致性
+        顺序一致性 ✅
+
+    zookeeper实现分布式锁
+        分布式锁
+            三个核心要素
+                获取锁
+                释放锁
+                锁超时
+            三个问题
+                原子性操作
+                防止误删锁
+                误删的基础上，加上守护进程，为锁续命
+        zookeeper的节点
+            持久化节点
+            持久化有序节点
+            临时节点
+            临时有序节点
+23.dubbo
+
+    三大核心功能
+        - 面向接口的远程过程调用
+        - 智能容错合负载均衡
+        - 服务注册与发现
+24.themeforest.net
+
+
+
+25.dropzone
+    wangEdit
+26.安装manjaro
+    1.制作u盘
+        rufus
+
+            fish
+            alacritty
+            dmenu
+
+
+27.pacman
+    - pacman -S 安装
+        -Ss search
+        -Sy
+        -Syyu
+    - pacman -R 卸载
+        -Rs 
+        -Rns 同时删除全局配置文件
+    - pacman -Q 查询本地安装
+        -Qe
+        -Qeq
+        -Qs
+        -Qdt 不再需要的软件
+        pacman -R $(pacman -Qdtq)
+28.
+    mysql_secure_installation
+29.
+    vim ~/.vim/vimrc
+
+    let mapleader=" "
+    syntax on
+    set number
+    set relativenumber
+    set cursorline
+    set wrap
+    set showcmd
+    set wildmenu
+    set hlsearch
+    set insearch
+    set ignorecase
+    set smartcase
+    exec "nohlsearch"
+
+
+    noremap
+
+    map s <nop>
+    map S :w<CR>
+    map Q :q<CR>
+    map R :source $MYVIMRC<CR>
+
+    call plug#begin ('~/.vim/plugged')
+
+    Plug ''
+        - vim-airline
+        - vim-snazzy
+
+    call plug#end()
+
+
+    ---
+    :split
+    :vsplit
+
+    ---
+    vim-plugin
+
+
+    ---
+    vim 
+        - v 可视模式
+        - V 可视行模式
+        - ctrl v 可视块模式
+    
+    
+    
