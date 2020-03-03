@@ -1027,7 +1027,50 @@ proxy也是趋势
 
 ```
 
+### Day 43
+```markdown
+day 43
+为什么这些sql逻辑相同，性能却差异巨大？
+1. 条件字段函数操作，可能会破坏索引值的有序性，因此优化器就决定放弃走树搜索的功能
+2. 隐式类型转换，字符串和数字做比较，是将字符串转化为数字
+3. 隐式字符编码转换
+对索引字段做函数操作，可能会放弃走搜索树导致查询变慢
 
+```
+
+### Day 44
+
+```markdown
+day 44
+mysql有哪些饮鸩止渴提高性能的方法？
+业务高峰期，生产环境的mysql压力太大，无法正常响应，需要短期内提升一下性能
+1. 短连接风暴
+数据库建立连接的开销是很大的
+	- 三次握手
+	- 权限判断
+	- 获取这个连接的数据读写权限
+短连接只要数据库处理的稍微慢些就会连接数暴涨，由max_connections控制
+ 1. 先处理掉占用连接但是不工作的线程
+ 		- kill connection
+ 		- 设置wait_timeout
+ 	通过show processlist和select * from information_schema.innodb_trx表的trx_mysql_thread_id
+ 2. 减少连接过程的损耗
+ 	跳过权限验证阶段
+ 	重启 并加上 -skip-grant-tables
+2. 慢查询
+	1. 索引没有设计好
+		online ddl 或者主备切换 进行alter table
+	2. SQL没有写好
+		query rewrite
+	3. MySQL没有选对索引
+		force index
+	4. 上线前通过slow_log long_query_time=0来检验每条语句
+3. QPS突增
+	1. 白名单中去掉
+	2. 删除掉单独的用户
+	3. 重写为select 1
+	
+```
 
 
 
