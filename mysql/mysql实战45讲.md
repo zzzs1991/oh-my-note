@@ -1072,5 +1072,49 @@ mysql有哪些饮鸩止渴提高性能的方法？
 	
 ```
 
+### Day 45
+
+```markdown
+day45
+如何判断一个数据库是不是出问题了
+1. select 1
+  select 1成功返回只能说明数据库的进程还在，无法说明库没有问题。
+  并发线程数达到了innodb_thread_concurrency的值时，select 1可以返回，但查询表会堵住。
+  innodb_thread_concurrency默认为0，但这样会导致cpu切换上下文浪费资源，建议设置为64-128.
+	- 并发连接数
+    show processlist
+	- 并发查询数
+    即现在innodb_thread_concurrency
+  线程进入锁等待时，并发线程计数会减一，避免整个系统锁死。
+2. 查表判断
+  比如建立一个表health_check
+  定期执行 select * from mysql.health_check;
+  在磁盘空间占用100%时，更新语句和事务提交语句都会被堵住，但是查询是可以通过的。
+3. 更新判断
+  update mysql.health_check set t_modified=now();
+  但是外部查询都有一定的随机性。
+4. 内部统计
+  磁盘利用率这个问题，mysql可以告诉我们，内部每一次IO请求的时间。
+  在performance_schema库，在file_summary_by_event_name表中统计了每次IO的时间。
+  需要打开
+  `update setup_instruments set ENABLED='YES', Timed='YES' where name like '%wait/io/file/innodb/innodb_log_file%';`
+  打开监控后，通过`select event_name,MAX_TIME_WAIT FROM performance_schema.file_summary_by_event_name in ('wait/io/file/innodb/innodb_log_file','wait/io/file/sql/binlog') and MAX_TIMER_WAIT>200*1000000000;`查询
+  发现异常后，用`truncate table performance.shcema.file_summary_by_event_name;`清空之前的统计信息。
+  
+```
+
+### Day 46 
+
+```
+day46
+
+```
+
+### Day 47
+
+```
+day47
+```
+
 
 
