@@ -1105,15 +1105,46 @@ day45
 
 ### Day 46 
 
-```
+```markdown
 day46
-
+误删库后除了跑路，还能怎么办
+误删操作分类
+ 	- delete误删某行数据
+	- drop table 或者 truncate table误删数据表
+	- drop database误删数据库
+	- rm 误删整个数据库实例
+1. 误删行
+   误删行可以使用Flashback工具恢复，它是将binlog的内容修改后拿回原库回放
+   前提
+   	- binlog_format=row
+   	- binlog_row_image=FULL
+   不建议在主库上直接回放，有关联事务会造成二次伤害
+   提前预防 
+   	1. sql_safe_updates设置为on，这要求delete或者update语句必须有where语句且包含索引字段。
+   	2. 代码上线前必须经过SQL审计
+2. 误删库、表
+  全量备份+增量日志
+  要求:定期全量备份+实时备份binlog
+3. 延迟复制备库
+  通过change master to MASTER_DELAY= N设置这个备库与主库有N秒的延迟
+  预防误删表、库的方法
+  1. 账号分离
+  2. 指定操作规范
+    - 删表之前，先改名，无影响后删除
+    - 改名加固定的后缀，只允许删指定后缀的表
+4. rm删除数据
+  删除节点对集群来说并不可怕
 ```
 
 ### Day 47
 
-```
+```markdown
 day47
+为什么有kill不掉的语句
+	- kill query + 线程id
+	  终止这个线程中正在执行的语句
+	- kill [connection] + 线程id
+	  断开这个线程的连接，如果有语句执行，先停止这个语句
 ```
 
 
