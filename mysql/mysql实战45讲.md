@@ -1192,8 +1192,32 @@ day50
 
 ### Day 51
 
-```
-day51
+```markdown
+day51 什么时候会使用内部临时表
+1. union执行流程
+union的语义是取两个子查询的并集，两个集合加起来，相同的行只保留一次
+在这个过程中使用到了内存临时表，并且利用了内存临时表的主键唯一性约束
+unionall 就没有去重的语义
+2. group by的执行流程
+内存临时表大小有参数tmp_table_size控制，默认为16M
+3. group by的优化方法 利用索引
+group by之所以用临时表，是因为数据是无序的，需要进行统计排序
+利用索引
+4. group by的优化方法 直接排序
+利用SQL_BIG_RESULT来暗示优化器直接使用磁盘临时表
+
+总结：
+1.语句执行过程可以一边读数据，一边得到结果，就不需要临时表
+2.join_buffer是无序数组，sort_buffer是有序数组，临时表是二维表结构
+3.如果执行逻辑需要用到二维表的特性，会有限使用临时表。
+    - union用到了唯一索引约束
+    - group by需要另外一个字段来保存累计计数
+
+知道原则：
+1. group by 如果没有排序需求，可以加上order by null
+2. 尽量让group by 走索引，确认方法是explain结果没有using temporary 和 using filesort
+3. group by 统计数量不大，走内存临时表
+4. group by 统计量大，用SQL_BIG_RESULT来让优化器直接走磁盘临时表
 ```
 
 ### Day 52
