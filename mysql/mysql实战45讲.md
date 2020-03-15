@@ -1298,6 +1298,44 @@ select t1.b,t2.* from t2 straight_join t1 on (t1.b=t2.b) where t2.id <=100;
 ```
 t1.b和t2.*比 t1.b是小表
 
+join语句怎么优化
+```sql
+create database `test1`;
+use test1;
+create table `t1` (
+    `id` int primary key,
+    `a` int,
+    `b` int,
+    index(`a`)
+)engine=innodb;
+create table `t2` like `t1`;
+delimiter ;;
+create procedure idata()
+begin
+    declare i int;
+    set i=1;
+    while(i<=1000)do
+        insert into t1 values(i, 1001-i, i);
+        set i=i+1;
+    end while;
+
+    set i=1;
+    while(i<=1000000)do
+        insert into t2 values(i, i, i);
+        set i=i+1;
+    end while;
+
+end ;;
+delimiter ;
+
+-- 直接call idata() 很慢 每次都要提交事务 一个多小时
+call idata();
+-- 可以通过以下提升速度 43.594s
+set autocommit=0;
+call idata();
+commit;
+```
+
 ### Day 51
 
 ```markdown
@@ -1332,18 +1370,37 @@ group by之所以用临时表，是因为数据是无序的，需要进行统计
 
 ```
 day52
+insert语句的锁为什么这么多
+并不是所有的insert语句都是轻量级操作，有些在执行过程中需要给其他资源加锁，
+或者无法在申请到自增id以后就立马释放自增锁
+1.
+insert ... select 是很常见的在两个表之间拷贝数据的方法。
+在可重复读隔离级别下，这个语句会给select的表里扫描到的记录和间隙加读锁
+2.
+insert语句和select的对象是同一个表，可能会导致循环写，需要引入用户临时表来做优化
+3.
+insert语句如果出现唯一键冲突，会在冲突的唯一值上加共享的next-key lock。
+因此在碰到唯一键约束导致报错后，要尽快提交或回滚事务，避免加锁时间过长。
 ```
 
 ### Day 53
 
 ```
 day53
+grant之后要跟着flush privileges吗
+grant语句会同时修改数据表和内存，判断权限的时候使用的是内存数据。
+因此，规范的使用grant和revoke语句，是不需要随后加上flush privileges语句的
+
 ```
 
 ### Day 54
 
 ```
 day54
+为什么临时表可以重名
+在实际应用中，临时表一般用于处理比较复杂的计算逻辑。由于临时表是每个线程自己可见的，
+所以不需要考虑多个线程执行同一个处理逻辑时，临时表的重名问题。在线程退出的时候，临时表能
+自动删除，省去了收尾和异常处理工作。
 ```
 
 ### Day 57
