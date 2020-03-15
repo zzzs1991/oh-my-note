@@ -1194,6 +1194,110 @@ day50
 3. 在使用join的时候，尽量使用小表作为驱动表
 ```
 
+```sql
+CREATE TABLE `t2` (
+    `id` int(11) NOT NULL,
+    `a` int(11) DEFAULT NULL,
+    `b` int(11) DEFAULT NULL, 
+    PRIMARY KEY (`id`),
+    KEY `a` (`a`)
+) ENGINE=innodb;
+
+drop procedure idata;
+delimiter ;;
+create procedure idata()
+begin
+    declare i int;
+    set i=1;
+    while(i<=1000)do
+        insert into t2 values(i, i, i);
+        set i=i+1;
+    end while;
+end;;
+delimiter ;
+call idata();
+
+create table t1 like t2;
+insert into t1 (select * from t2 where id<=100);
+```
+1. Index Nested-Loop Join
+```sql
+select * from t1 straight_join t2 on (t1.a=t2.a);
+
+-- 直接使用join语句时，mysql优化器可能会使用t1或t2来作为驱动表，使用straight join来让
+-- mysql使用固定的连接方式来执行
+```
+```
+mysql> explain select * from t1 straight_join t2 on (t1.a=t2.a);
++----+-------------+-------+------------+------+---------------+------+---------+-----------+------+----------+-------------+
+| id | select_type | table | partitions | type | possible_keys | key  | key_len | ref       | rows | filtered | Extra       |
++----+-------------+-------+------------+------+---------------+------+---------+-----------+------+----------+-------------+
+|  1 | SIMPLE      | t1    | NULL       | ALL  | a             | NULL | NULL    | NULL      |  100 |   100.00 | Using where |
+|  1 | SIMPLE      | t2    | NULL       | ref  | a             | a    | 5       | test.t1.a |    1 |   100.00 | NULL        |
++----+-------------+-------+------------+------+---------------+------+---------+-----------+------+----------+-------------+
+2 rows in set, 1 warning (0.00 sec)
+
+1. 从表t1中取出一个数据行R
+2. 从数据行R中拿出a字段，取表t2中查询
+3. 取出t2中满足条件的行，跟R组成一行，作为结果集的一部分
+4. 重复执行1-3，直到t1的末尾循环结束
+分析时间复杂度 
+前提: 驱动表N行 被驱动表M行 且在被驱动表上查询时可以走索引
+1. t1做了全表扫描 N
+2. t2可以走索引 2*logM
+3. 总的时间复杂度为N*(1+2logM)
+用小表做驱动表，大表还能走索引是最理想的情况。
+```
+
+2. Simple Nested-Loop Join
+3. Block Nested-Loop Join
+```sql
+select * from t1 straight_join t2 on (t1.a=t2.b);
+```
+```
+mysql> explain select * from t1 straight_join t2 on (t1.a=t2.b);
++----+-------------+-------+------------+------+---------------+------+---------+------+------+----------+----------------------------------------------------+
+| id | select_type | table | partitions | type | possible_keys | key  | key_len | ref  | rows | filtered | Extra                                              |
++----+-------------+-------+------------+------+---------------+------+---------+------+------+----------+----------------------------------------------------+
+|  1 | SIMPLE      | t1    | NULL       | ALL  | a             | NULL | NULL    | NULL |  100 |   100.00 | NULL                                               |
+|  1 | SIMPLE      | t2    | NULL       | ALL  | NULL          | NULL | NULL    | NULL | 1000 |    10.00 | Using where; Using join buffer (Block Nested Loop) |
++----+-------------+-------+------------+------+---------------+------+---------+------+------+----------+----------------------------------------------------+
+2 rows in set, 1 warning (0.00 sec)
+
+执行流程
+1. 把表t1的数据读入线程内存join_buffer中，
+2. 扫描表t2，把t2中的每一行取出来，跟join_buffer中的数据做对比，满足join条件的作为结果集返回
+
+Block Nested-Loop Join使用的内存中的Join buffer，对比操作是内存中的操作，比Simple Nested-Loop Join快
+Join Buffer 由参数 join_buffer_size 控制， 默认256k
+假设要分K段来放入join_buffer, N = K * jbs, K = N/jbs， K = x * N
+扫描行数 N + x *N * M
+内存判断次数 N * M
+小表作为驱动表，join_buffer_size 越大，分段次数越少
+```
+能不能用join
+1. 如果使用到index nested-loop join, 即用上了被驱动表的索引，是可以的
+2. 如果使用block nested-loop join, 扫描行数就会过多，尤其是大表，尽量不要用
+判断标准，explain结果中，Extra字段出现了Block Nested-Loop join
+
+如果使用join, 应该使用大表还是小表作为驱动表
+1. 如果是index nested-loop join，选择小表作为驱动表
+2. 如果是block nested-loop join
+    1. 若join buffer size足够大 ，都一样
+    2. 若join buffer size不够大，应选择小表
+
+什么叫做小表？
+```sql
+select * from t1 straight_join t2 on (t1.b=t2.b) where t2.id <= 50;
+select * from t2 straight_join t1 on (t1.b=t2.b) where t2.id <= 50;
+```
+t2的前50行是小表
+```sql
+select t1.b,t2.* from t1 straight_join t2 on (t1.b=t2.b) where t2.id <=100;
+select t1.b,t2.* from t2 straight_join t1 on (t1.b=t2.b) where t2.id <=100;
+```
+t1.b和t2.*比 t1.b是小表
+
 ### Day 51
 
 ```markdown
@@ -1217,7 +1321,7 @@ group by之所以用临时表，是因为数据是无序的，需要进行统计
     - union用到了唯一索引约束
     - group by需要另外一个字段来保存累计计数
 
-知道原则：
+指导原则：
 1. group by 如果没有排序需求，可以加上order by null
 2. 尽量让group by 走索引，确认方法是explain结果没有using temporary 和 using filesort
 3. group by 统计数量不大，走内存临时表
