@@ -1406,7 +1406,123 @@ day54
 ### Day 57
 
 ```
-day57
+day57都说innodb好，那还要不要使用memory引擎
+1. 内存表的数据组织结构
+    - innodb引擎把数据放在主键索引上，其他索引上保存的是主键id. 即索引组织表
+    - memory引擎采用的是把数据单独存放，索引上保存数据位置. 堆组织表
+2. innodb与memory表的区别
+    - innodb表的数据总是有序存放的。而内存数据表是按照写入顺序存放的
+    - 数据文件有空洞时，在插入数据时，innodb为了保证有序，只能在固定的位置上写入新值
+        而内存表找到空位就可以插入新值
+    - 数据位置发生变化时，innodb只需要修改主键索引，而内存表需要修改所有索引
+    - innodb用主键索引时只需要走一次表，而其他索引需要走两次表
+        memory表所有索引都是相同的
+    - innodb支持定长的数据类型，不同记录的长度可能不同。内存表不支持Blob和Text字段
+        并且即使定义了varchar(N)，也是当作char(N)，内存表每条记录长度都相同
+3. 内存表的优势是快
+    - hash
+    - 内存读写快
+4. 不支持在生产环境使用memory表
+    - 锁粒度问题
+    - 数据持久化问题
+5. 锁粒度问题
+    内存表不支持行锁，支持表锁。
+6. 数据持久性问题
+    - 内存表在断电或重启后都会消失
+    - 主备架构下，内存表断电后会在binlog中插入delete from t1；传到备库后都消失了。
+7. innodb与memory对比
+    - 表更新量大，innodb的并发度更高
+    - 表量不大，且考虑的是读性能，innodb的数据也都会在buffer pool 中的，读数据的速度也很快
+8. memory的特殊应用
+   用户临时表
+    - 内存临时表正好可以无视内存表的不足
+        1. 临时表不会被其他线程访问，没有并发性的问题
+        2. 临时表重启后也是要删除的
+        3. 备库的临时表也不会影响主库的用户线程
+```
+```sql
+create table t1(id int primary key, c int) engine=memory;
+create table t2(id int primary key, c int) engine=innodb;
+insert into t1 values(1,1),(2,2),(3,3),(4,4),(5,5),(6,6),(7,7),(8,8),(9,9),(0,0);
+insert into t2 values(1,1),(2,2),(3,3),(4,4),(5,5),(6,6),(7,7),(8,8),(9,9),(0,0);
+```
+```sql
+-- 内存表删除5再插入10，10会出现在原来5所在的位置
+delete from t1 where id =5;
+insert into t1 values(10,10);
+select * from t1;
+-- 在内存表上作范围查询，走不了主键索引，只能全表查询
+select * from t1 where id<5;
+mysql> explain select * from t1 where id<5;
++----+-------------+-------+------------+------+---------------+------+---------+------+------+----------+-------------+
+| id | select_type | table | partitions | type | possible_keys | key  | key_len | ref  | rows | filtered | Extra       |
++----+-------------+-------+------------+------+---------------+------+---------+------+------+----------+-------------+
+|  1 | SIMPLE      | t1    | NULL       | ALL  | PRIMARY       | NULL | NULL    | NULL |   10 |    33.33 | Using where |
++----+-------------+-------+------------+------+---------------+------+---------+------+------+----------+-------------+
+1 row in set, 1 warning (0.00 sec)
+
+-- 内存表也支持B-Tree索引
+alter table t1 add index a_btree_index using btree (id);
+
+mysql> select * from t1 where id <5;
++----+------+
+| id | c    |
++----+------+
+|  0 |    0 |
+|  1 |    1 |
+|  2 |    2 |
+|  3 |    3 |
+|  4 |    4 |
++----+------+
+5 rows in set (0.00 sec)
+
+mysql> explain select * from t1 where id <5;
++----+-------------+-------+------------+-------+-----------------------+---------------+---------+------+------+----------+-------------+
+| id | select_type | table | partitions | type  | possible_keys         | key           | key_len | ref  | rows | filtered | Extra       |
++----+-------------+-------+------------+-------+-----------------------+---------------+---------+------+------+----------+-------------+
+|  1 | SIMPLE      | t1    | NULL       | range | PRIMARY,a_btree_index | a_btree_index | 4       | NULL |    6 |   100.00 | Using where |
++----+-------------+-------+------------+-------+-----------------------+---------------+---------+------+------+----------+-------------+
+1 row in set, 1 warning (0.00 sec)
+
+
+mysql> select * from t1 force index(primary) where id < 5;
++----+------+
+| id | c    |
++----+------+
+|  1 |    1 |
+|  2 |    2 |
+|  3 |    3 |
+|  4 |    4 |
+|  0 |    0 |
++----+------+
+5 rows in set (0.00 sec)
+
+mysql> explain select * from t1 force index(primary) where id < 5;
++----+-------------+-------+------------+------+---------------+------+---------+------+------+----------+-------------+
+| id | select_type | table | partitions | type | possible_keys | key  | key_len | ref  | rows | filtered | Extra       |
++----+-------------+-------+------------+------+---------------+------+---------+------+------+----------+-------------+
+|  1 | SIMPLE      | t1    | NULL       | ALL  | PRIMARY       | NULL | NULL    | NULL |   10 |    33.33 | Using where |
++----+-------------+-------+------------+------+---------------+------+---------+------+------+----------+-------------+
+1 row in set, 1 warning (0.01 sec)
+
+```
+```sql
+-- session 1
+update t1 set id=sleep(50) where id=1;
+-- session 2
+select * from t1 where id=2;
+-- session 3 
+show processlist;
+
+mysql> show processlist;
++----+------+-----------+-------+---------+------+------------------------------+-----------------------------------------+
+| Id | User | Host      | db    | Command | Time | State                        | Info                                    |
++----+------+-----------+-------+---------+------+------------------------------+-----------------------------------------+
+|  2 | root | localhost | test2 | Query   |    0 | starting                     | show processlist                        |
+|  3 | root | localhost | test2 | Query   |    5 | User sleep                   | update t1 set id=sleep(50) where id = 1 |
+|  4 | root | localhost | test2 | Query   |    2 | Waiting for table level lock | select * from t1 where id = 2           |
++----+------+-----------+-------+---------+------+------------------------------+-----------------------------------------+
+3 rows in set (0.00 sec)
 ```
 
 ### Day 58
