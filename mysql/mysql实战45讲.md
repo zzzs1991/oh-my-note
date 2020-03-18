@@ -1528,8 +1528,209 @@ mysql> show processlist;
 ### Day 58
 
 ```
-day58
+day58 要不要使用分区表
+
 ```
+```sql
+create database test;
+use test;
+create table `t1` (
+    `ftime` datetime not null,
+    `c` int(11) default null,
+    key (`ftime`)
+)engine=innodb default charset=latin1
+partition by range (year(ftime))(
+    partition p_2017 values less than (2017) engine=innodb,
+    partition p_2018 values less than (2018) engine=innodb,
+    partition p_2019 values less than (2019) engine=innodb,
+    partition p_others values less than maxvalue engine=innodb
+);
+insert into t1 values ('2017-4-1',1),('2018-4-1',1);
+
+root@80b89c9b7dd4:/var/lib/mysql/test# ls
+db.opt  t1#P#p_2017.ibd  t1#P#p_2018.ibd  t1#P#p_2019.ibd  t1#P#p_others.ibd  t1.frm
+```
+```
+1.分区表的存储形式
+对于引擎层，是一张表
+对于server层是四张表
+2.分区表的引擎层行为
+```
+```sql
+-- 对innodb来说
+-- session A
+
+use test;
+begin;
+select * from t1 where ftime='2017-5-1' for update;
+
+-- session B
+
+use test;
+insert into t1 values('2018-2-1',1);
+insert into t1 values('2017-12-1',1);
+
+-- session 3
+
+show engine innodb status;
+```
+
+```
+-- 重点
+------- TRX HAS BEEN WAITING 26 SEC FOR THIS LOCK TO BE GRANTED:
+RECORD LOCKS space id 25 page no 4 n bits 72 index ftime of table `test`.`t1` /*
+ Partition `p_2018` */ trx id 1818 lock_mode X insert intention waiting
+Record lock, heap no 1 PHYSICAL RECORD: n_fields 1; compact format; info bits 0
+ 0: len 8; hex 73757072656d756d; asc supremum;;
+
+
+-- 详情
+mysql> show engine innodb status\G
+*************************** 1. row ***************************
+  Type: InnoDB
+  Name:
+Status:
+=====================================
+2020-03-18 05:32:49 0x7f9a04100700 INNODB MONITOR OUTPUT
+=====================================
+Per second averages calculated from the last 6 seconds
+-----------------
+BACKGROUND THREAD
+-----------------
+srv_master_thread loops: 4 srv_active, 0 srv_shutdown, 2481 srv_idle
+srv_master_thread log flush and writes: 2485
+----------
+SEMAPHORES
+----------
+OS WAIT ARRAY INFO: reservation count 14
+OS WAIT ARRAY INFO: signal count 14
+RW-shared spins 0, rounds 23, OS waits 10
+RW-excl spins 0, rounds 0, OS waits 0
+RW-sx spins 0, rounds 0, OS waits 0
+Spin rounds per wait: 23.00 RW-shared, 0.00 RW-excl, 0.00 RW-sx
+------------
+TRANSACTIONS
+------------
+Trx id counter 1819
+Purge done for trx's n:o < 1818 undo n:o < 0 state: running but idle
+History list length 2
+LIST OF TRANSACTIONS FOR EACH SESSION:
+---TRANSACTION 421774760934136, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 1818, ACTIVE 26 sec inserting
+mysql tables in use 1, locked 1
+LOCK WAIT 2 lock struct(s), heap size 1136, 1 row lock(s), undo log entries 1
+MySQL thread id 2, OS thread handle 140299470391040, query id 29 localhost root
+update
+insert into t1 values('2017-12-1',1)
+------- TRX HAS BEEN WAITING 26 SEC FOR THIS LOCK TO BE GRANTED:
+RECORD LOCKS space id 25 page no 4 n bits 72 index ftime of table `test`.`t1` /*
+ Partition `p_2018` */ trx id 1818 lock_mode X insert intention waiting
+Record lock, heap no 1 PHYSICAL RECORD: n_fields 1; compact format; info bits 0
+ 0: len 8; hex 73757072656d756d; asc supremum;;
+
+------------------
+---TRANSACTION 1812, ACTIVE 40 sec
+2 lock struct(s), heap size 1136, 1 row lock(s)
+MySQL thread id 3, OS thread handle 140299470120704, query id 25 localhost root
+--------
+FILE I/O
+--------
+I/O thread 0 state: waiting for completed aio requests (insert buffer thread)
+I/O thread 1 state: waiting for completed aio requests (log thread)
+I/O thread 2 state: waiting for completed aio requests (read thread)
+I/O thread 3 state: waiting for completed aio requests (read thread)
+I/O thread 4 state: waiting for completed aio requests (read thread)
+I/O thread 5 state: waiting for completed aio requests (read thread)
+I/O thread 6 state: waiting for completed aio requests (write thread)
+I/O thread 7 state: waiting for completed aio requests (write thread)
+I/O thread 8 state: waiting for completed aio requests (write thread)
+I/O thread 9 state: waiting for completed aio requests (write thread)
+Pending normal aio reads: [0, 0, 0, 0] , aio writes: [0, 0, 0, 0] ,
+ ibuf aio reads:, log i/o's:, sync i/o's:
+Pending flushes (fsync) log: 0; buffer pool: 0
+429 OS file reads, 169 OS file writes, 75 OS fsyncs
+0.00 reads/s, 0 avg bytes/read, 0.00 writes/s, 0.00 fsyncs/s
+-------------------------------------
+INSERT BUFFER AND ADAPTIVE HASH INDEX
+-------------------------------------
+Ibuf: size 1, free list len 0, seg size 2, 0 merges
+merged operations:
+ insert 0, delete mark 0, delete 0
+discarded operations:
+ insert 0, delete mark 0, delete 0
+Hash table size 34679, node heap has 0 buffer(s)
+Hash table size 34679, node heap has 0 buffer(s)
+Hash table size 34679, node heap has 0 buffer(s)
+Hash table size 34679, node heap has 0 buffer(s)
+Hash table size 34679, node heap has 0 buffer(s)
+Hash table size 34679, node heap has 0 buffer(s)
+Hash table size 34679, node heap has 0 buffer(s)
+Hash table size 34679, node heap has 0 buffer(s)
+0.00 hash searches/s, 0.00 non-hash searches/s
+---
+LOG
+---
+Log sequence number 12394303
+Log flushed up to   12394303
+Pages flushed up to 12394303
+Last checkpoint at  12394294
+0 pending log flushes, 0 pending chkp writes
+42 log i/o's done, 0.00 log i/o's/second
+----------------------
+BUFFER POOL AND MEMORY
+----------------------
+Total large memory allocated 137428992
+Dictionary memory allocated 128868
+Buffer pool size   8192
+Free buffers       7731
+Database pages     461
+Old database pages 0
+Modified db pages  0
+Pending reads      0
+Pending writes: LRU 0, flush list 0, single page 0
+Pages made young 0, not young 0
+0.00 youngs/s, 0.00 non-youngs/s
+Pages read 404, created 57, written 100
+0.00 reads/s, 0.00 creates/s, 0.00 writes/s
+Buffer pool hit rate 1000 / 1000, young-making rate 0 / 1000 not 0 / 1000
+Pages read ahead 0.00/s, evicted without access 0.00/s, Random read ahead 0.00/s
+LRU len: 461, unzip_LRU len: 0
+I/O sum[0]:cur[0], unzip sum[0]:cur[0]
+--------------
+ROW OPERATIONS
+--------------
+0 queries inside InnoDB, 0 queries in queue
+0 read views open inside InnoDB
+Process ID=1, Main thread ID=140299484112640, state: sleeping
+Number of rows inserted 3, updated 0, deleted 0, read 8
+0.00 inserts/s, 0.00 updates/s, 0.00 deletes/s, 0.00 reads/s
+----------------------------
+END OF INNODB MONITOR OUTPUT
+============================
+
+1 row in set (0.00 sec)
+
+```
+```sql
+-- 对myisam来说
+-- myisam引擎只支持表锁，所以这条update语句会锁住整个表t1上的读
+-- session A
+alter table t1 engine=myisam;
+update t1 set c=sleep(100) where ftime='2017-4-1';
+
+-- session B
+use test;
+select * from t1 where ftime='2018-4-1';
+select * from t1 where ftime='2017-5-1';-- blocked
+
+```
+
+
+
+
+
+
 
 ### Day 59
 
