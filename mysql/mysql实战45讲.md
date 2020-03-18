@@ -1534,7 +1534,7 @@ day58 要不要使用分区表
 ```sql
 create database test;
 use test;
-create table `t1` (
+create table `t` (
     `ftime` datetime not null,
     `c` int(11) default null,
     key (`ftime`)
@@ -1545,7 +1545,7 @@ partition by range (year(ftime))(
     partition p_2019 values less than (2019) engine=innodb,
     partition p_others values less than maxvalue engine=innodb
 );
-insert into t1 values ('2017-4-1',1),('2018-4-1',1);
+insert into t values ('2017-4-1',1),('2018-4-1',1);
 
 root@80b89c9b7dd4:/var/lib/mysql/test# ls
 db.opt  t1#P#p_2017.ibd  t1#P#p_2018.ibd  t1#P#p_2019.ibd  t1#P#p_others.ibd  t1.frm
@@ -1562,13 +1562,13 @@ db.opt  t1#P#p_2017.ibd  t1#P#p_2018.ibd  t1#P#p_2019.ibd  t1#P#p_others.ibd  t1
 
 use test;
 begin;
-select * from t1 where ftime='2017-5-1' for update;
+select * from t where ftime='2017-5-1' for update;
 
 -- session B
 
 use test;
-insert into t1 values('2018-2-1',1);
-insert into t1 values('2017-12-1',1);
+insert into t values('2018-2-1',1);
+insert into t values('2017-12-1',1);
 
 -- session 3
 
@@ -1716,15 +1716,50 @@ END OF INNODB MONITOR OUTPUT
 -- 对myisam来说
 -- myisam引擎只支持表锁，所以这条update语句会锁住整个表t1上的读
 -- session A
-alter table t1 engine=myisam;
-update t1 set c=sleep(100) where ftime='2017-4-1';
+alter table t engine=myisam;
+update t set c=sleep(100) where ftime='2017-4-1';
 
 -- session B
 use test;
-select * from t1 where ftime='2018-4-1';
-select * from t1 where ftime='2017-5-1';-- blocked
+select * from t where ftime='2018-4-1';
+select * from t where ftime='2017-5-1';-- blocked
 
 ```
+```
+分区策略
+1. 通用分区策略 myisam 由server层控制，把所有分区表都打开
+2. 本地分区策略 引擎层控制
+```
+
+```mysql-sql
+-- session A
+use test;
+begin;
+select * from t where ftime='2018-4-1';
+
+-- session B
+use test;
+alter table t truncate partition p_2017;
+
+mysql> show processlist;
++----+------+-----------+------+---------+------+---------------------------------+-----------------------------------------+
+| Id | User | Host      | db   | Command | Time | State                           | Info                                    |
++----+------+-----------+------+---------+------+---------------------------------+-----------------------------------------+
+|  2 | root | localhost | test | Query   |    0 | starting                        | show processlist                        |
+|  3 | root | localhost | test | Query   |   25 | Waiting for table metadata lock | alter table t truncate partition p_2017 |
++----+------+-----------+------+---------+------+---------------------------------+-----------------------------------------+
+2 rows in set (0.00 sec)
+```
+```
+1 MySQL在第一次打开分区表的时候要访问所有的分区
+2 在server层，认为这是一张表，共用一个MDL锁
+3 在引擎层，是不同的表，MDL锁之后的流程，只访问必要的分区
+
+分区表的应用场景
+1 对业务透明
+2 删除历史数据快 alter table t drop partition ...
+```
+
 
 
 
