@@ -112,7 +112,7 @@ analyze table t;
 - 增加或删除索引
 ```
 
-```mysql
+```sql
 CREATE TABLE `t` (
     `id` int(11) NOT null,
     `a` int(11) DEFAULT null,
@@ -123,7 +123,7 @@ CREATE TABLE `t` (
 ) ENGINE=INNODB;
 ```
 
-```mysql
+```sql
 DELIMITER ;;
 CREATE PROCEDURE idata()
 BEGIN
@@ -138,11 +138,11 @@ DELIMITER ;
 CALL idata();
 ```
 
-```mysql
+```sql
 select * from t where a between 10000 and 20000;
 ```
 
-```mysql
+```sql
 start transaction with consistent snapshot;
 
 
@@ -150,7 +150,7 @@ start transaction with consistent snapshot;
 commit;
 ```
 
-```mysql
+```sql
 delete from t;
 call idata();
 
@@ -159,7 +159,7 @@ select * from t where a between 10000 and 20000;
 select * from t force index(a) where a between 10000 and 20000;
 ```
 
-```mysql
+```sql
 select * from t where a between 1 and 1000 and b between 50000 and 100000 order by b limit 1;
 
 select * from t force index(a) where a between 1 and 1000 and b between 50000 and 100000 order by b limit 1;
@@ -211,7 +211,7 @@ innodb_flush_neighbors 为1时，刷脏页时，相邻脏页会被一同刷掉�
 
 ```
 
-```mysql
+```sql
 SELECT variable_value INTO @a from GLOBAL_STATUS where variable_name = 'Innodb_buffer_pool_pages_dirty';
 SELECT variable_value INTO @b from GLOBAL_STATUS where variable_name = 'Innodb_buffer_pool_pages_total';
 SELECT @a/@b;
@@ -302,7 +302,7 @@ insert 。。。 on duplicate key 。。。 不存在就插入，存在就更新
 insert ignore into 。。 表示插入时如果存在相同的记录就忽略。
 ```
 
-```shell
+```shell script
 
 GRANT ALL PRIVILEGES ON *.* TO 'root'@'%' WITH GRANT OPTION;
 
@@ -1731,7 +1731,7 @@ select * from t where ftime='2017-5-1';-- blocked
 2. 本地分区策略 引擎层控制
 ```
 
-```mysql-sql
+```sql
 -- session A
 use test;
 begin;
@@ -1769,8 +1769,27 @@ mysql> show processlist;
 
 ### Day 59
 
-```
-day59
+```markdown
+day59 自增主键为什么不是连续的
+1. 自增主键的存储
+    - myISAM 是存在数据文件上的
+    - InnoDB 自增值是存储在内存中的 直到8.0版本才给InnoDB表的自增加上了持久化的能力
+2. 自增主键在MySQL回滚时不能回收
+3. 自增锁
+    - 语句级别 5.0起
+    - 5.1.22引入了新策略 innodb_automic_lock_mode 默认为1
+        1. 0 语句级别
+        2. 1 insert语句 在申请之后马上释放
+             insert ... select 这样批量插入的数据，还是等到语句结束后释放
+        3. 2 所有的都是申请完后释放
+    innodb_automic_lock_mode 为 2时，binlog_format=row 即能提高并发度，又不会出现数据一致性问题
+    批量插入的语句 不知道插入多少条数据
+        - insert ... select 
+        - replace ... select
+        - load data
+    还有一个优化
+    批量插入时申请锁的数量每次都会乘以2 这也是自增主键不连续的原因之一
+
 ```
 
 ### Day 60
