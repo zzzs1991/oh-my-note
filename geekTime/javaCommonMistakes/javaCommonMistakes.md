@@ -41,3 +41,57 @@ day 4 连接池:别让连接池帮了倒忙
 3. 连接池配置参数
     - 最重要的是最大链接数
 ```
+
+### day8
+```markdown
+day 8 判等问题 程序中如何确定你就是你
+判等问题上主要涉及到
+    - equals
+    - compareTo
+    - Java 数值缓存
+    - Java 字符串驻留
+equals 和 == 的区别
+    1. ==
+        - 对于基本类型来说 ==就是比较值
+        - 对于引用类型来说 就是比较指针 而不是比较内容
+    2. equals
+java 数值缓存
+    Integer、Short、Long的valueOf方法中实现了一个[-128,127]的缓存池
+    在这个范围内的话，返回的是一个对象
+    其中Integer的缓存大小还可以通过-XX:AutoBoxCacheMax=1000来改变，不会小于[-128,127]
+java 字符串驻留
+    直接用双引号声明的字符串和intern方法都会对字符串进行驻留
+    但滥用intern方法会导致性能问题 
+        - -XX:PrintStringTableStatistic在关闭程序后打印字符串常量表的信息
+        - 字符串常量表(池)是一个固定大小的map，可以通过-XX:StringTableSize来调节大小
+实现equals
+    1. equals是Object类中定义的方法，如果不重写这个方法，就会用Object中的方法
+       而Object类中的equals就是比较地址
+    2. 实现equals的要求
+        - 考虑到性能，需要先进行指针判等，如果是一个对象直接返回
+        - 需要对另外一个对象进行判空，如果为null，直接返回false
+        - 判断两个对象的类型是否相同，不同直接返回false
+        - 最后强制转换类型，逐一判断各个字段
+hashCode方法和equals方法需要配对实现
+    hashSet需要hash值来判断是否存在相同对象
+compareTo需要与equals逻辑保持一致
+lombok中的坑
+    @Data会实现equalsAndHashCode方法 可以用@EqualsAndHashCode.Exclude
+    来排除指定字段，让其不参与equals和hashCode方法
+    @EqualsAndHashCode默认callSuper=false，即不调用父类的方法
+    可以设为true来覆盖
+不同类加载器加载的对象，肯定不等
+结论：
+1. 比较值的内容，除了基本类型能用==外，其他类型都用equals
+2. 自定义类型，如果要实现Comparable，请记得equals、hashCode、compareTo
+   三者逻辑一致
+
+问题:
+1.getClass方法和instanceOf有什么区别
+    - instanceOf 判断的是你是不是该类或者该类的子类
+    - getClass后等值判断，看是不是一个类，更精确
+2.HashSet和TreeSet的contains方法有什么区别
+    - hashSet底层是HashMap存的Key，判断是否存在的方法就是equals和hashCode
+    - treeSet底层是TreeMap的Key，数据结构是红黑树，自带排序功能contains方法
+      根据comparator或compareTo判断相等
+```
