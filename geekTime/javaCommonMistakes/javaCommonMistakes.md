@@ -95,3 +95,62 @@ lombok中的坑
     - treeSet底层是TreeMap的Key，数据结构是红黑树，自带排序功能contains方法
       根据comparator或compareTo判断相等
 ```
+
+### day9
+```markdown
+
+```
+
+### 加餐1
+```markdown
+加餐 1 java8中那些重要知识点1
+1.java8的新功能
+    - Lambda
+    - stream
+    - parallelStream
+    - optional
+    - 新日期时间类
+2.推荐书籍 <java实战(第二版)>
+3.Lambda表达式
+    - Lambda表达式的一个初衷是为了简化匿名类的语法,但事实上并不是匿名类的语法糖
+    - 第二个初衷是为了使java走向函数式编程
+    - Lambda如何匹配Java类型系统呢
+        - 函数式接口
+        函数式接口是一种只含有单一方法的接口
+        使用@FunctionalInterface修饰
+        使用Lambda表达式来实现函数式接口,不需要提供雷鸣和方法定义
+        有些函数式接口还利用default关键字实现了几个默认方法,提供额外的功能
+    - Lambda表达式给我们提供了复用代码的更多可能性
+        - 把一大段逻辑中变化的部分抽象出函数式接口,由外部方法提供函数实现,重用方法内的整体逻辑
+4.使用java8简化代码
+    - 使用stream简化集合操作
+    - 使用optional简化判空逻辑
+        - 基本类型可空对象
+            - OptionalDouble
+            - OptionalInt
+            - OptionalLong
+        - 引用类型可空对象
+            - Optional
+    - JDK8使用Lambda和Stream对各种类的增强
+        - Java8中很多类也实现了函数式的功能
+            例如ConcurrentHashMap的computeIfAbsent方法
+5.并行流
+通过parallel方法一键将Stream转化为并行操作提交到线程池处理
+五种方式
+    1. 直接使用线程,通过countDownLatch来进行同步
+    2. 使用Excutors.newFixedThreadPool来获得固定线程数的线程池
+    3. 是否用forkJoinPool
+    4. 使用并行流,并行流使用的是ForkJoinPool里面的commonPool
+    5. 使用completableFuture.runAsync方法
+  2和4常用
+  forkJoinPool和ThreadPoolExcutor区别在于
+        - forkJoinPool对于n并行度有n个独立队列
+        - ThreadPoolExcutor是共享队列
+  forkJoinPool的配置需要在启动时设置
+6.forEachOrdered会使并行流失去并行度
+```
+
+### 加餐2
+```markdown
+
+```
