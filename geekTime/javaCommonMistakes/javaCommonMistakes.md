@@ -97,8 +97,37 @@ lombok中的坑
 ```
 
 ### day9
-```markdown
-
+```
+day 9 注意精度,舍入和溢出问题
+计算器或计算机得到反直觉计算结果的原因
+    - 计算机无法保存精确的浮点数
+    - 计算机中的数字不是无限增大的是空间限制的
+1.危险的Double
+    - 浮点数计算并不精确
+    - BigDecimal表示和计算浮点数时,务必使用字符串构造方法来初始化BigDecimal
+        - scale 小数位数
+        - percision 精度 有效数字长度
+        - new BigDecimal(Double.toString(100)) 
+            - Double.toString(100) -> 100.0
+            - scale 1
+            - percision 4
+        - new BigDecimal("100")
+            - scale 0
+            - percision 3
+    - 如果一定要用Double来初始化BigDecimal的话,可以使用BigDecimal.valueOf方法
+2.考虑浮点数舍入和格式化的方式
+    - 浮点数的字符串格式化也要通过BigDecimal进行
+3.用equals判等BigDecimal有问题
+    - BigDecimal的equals判断 值 和 精度 是都都相同
+    - BigDecimal的比较应该用compareTo
+    - 值相同,精度不同的BigDecimal的hashCode不同,可以放在同一个hashSet中
+        - 使用treeMap treeMap使用compareTo
+        - BigDecimal存入hashSet或HashMap前,用StripTrailingZeros去掉尾部的零,
+4.小心数值溢出问题
+    - 所有基本类型都会有超出表达范围的可能性
+    - 默默的溢出,不会报错
+        - 用Math类的addExact,subtractExact等方法,在数值溢出时报异常
+        - 使用BigInteger来对大数进行科学计算
 ```
 
 ### 加餐1
