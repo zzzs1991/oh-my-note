@@ -152,5 +152,38 @@ lombok中的坑
 
 ### 加餐2
 ```markdown
-
+加餐 1 java8中那些重要知识点2
+终结操作 terminal operation
+中间操作 intermediate operation
 ```
+Stream常见操作
+
+| 方法         | 中文       | 操作类型 | 类比SQL        | 使用的类型/函数式接口           | 作用                                              |
+|------------|----------|------|--------------|-----------------------|-------------------------------------------------|
+| filter     | 过滤/筛选    | 中间   | where        | Predicate<T>          | 对流过滤，使元素符合传入条件                                  |
+| map        | 转换/投影    | 中间   | select       | Function<T,R>         | 使用传入的函数，对流中每一个元素进行转换                            |
+| flatMap    | 展开/扁平化   | 中间   | N/A          | Function<T,Stream<R>> | 相当于map\+flat，通过map把每一个元素转换为一个流，然后把所有流连接到一起扁平化展开 |
+| sorted     | 排序       | 中间   | order by     | Comparator<T>         | 使用传入的比较器，对流中的元素进行排序                             |
+| distinct   | 去重       | 中间   | distinct     | long                  | 对流中元素进行去重\(Objects\.equals判重\)                  |
+| skip&limit | 分页       | 中间   | limit,offset | long                  | 跳过流中部分元素以及限制元素数量                                |
+| collect    | 收集       | 终结   | N/A          | Collector<T,A,R>      | 对流进行终结操作，把流导出成我们需要的数据结构                         |
+| forEach    | 遍历       | 终结   | N/A          | Consumer<T>           | 对每一个元素遍历进行消费                                    |
+| anyMatch   | 是否有元素匹配  | 终结   | N/A          | Predicate<T>          | 使用谓词判断是否有任何一个元素满足匹配                             |
+| allMatch   | 是否所有元素匹配 | 终结   | N/A          | Predicate<T>          | 使用谓词判断是否有所有元素满足匹配                               |
+
+Collectors中的一些静态方法
+
+| 方法                | 返回类型                 | 作用                                           |
+|-------------------|----------------------|----------------------------------------------|
+| toList            | List<T>              | 把流中元素收集成为一个List                              |
+| toSet             | Set<T>               | 把流中元素收集成为一个Set，去重                            |
+| toCollection      | Collection<T>        | 把流中元素收集成为指定集合                                |
+| counting          | Long                 | 计算流中元素个数                                     |
+| summingInt        | Integer              | 对流中元素的某个整数属性求和                               |
+| averagingInt      | Double               | 对流中元素的某个整数属性求平均值                             |
+| joining           | String               | 连接流中元素toString后的字符串                          |
+| minBy             | Optional<T>          | 使用指定的比较器选出最小的元素                              |
+| maxBy             | Optional<T>          | 使用指定的比较器选出最大的元素                              |
+| collectingAndThen | 根据收集器返回              | 包裹另一个收集器，对结果进行转换                             |
+| groupBy           | Map<K,List<T>>       | 根据元素的一个属性对元素进行分组，属性值作为key                    |
+| partitionBy       | Map<Boolean,List<T>> | 根据流中元素应用谓词\(Predicate\)的结果，将元素分为true和false两组 |
