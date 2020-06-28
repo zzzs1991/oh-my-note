@@ -6,7 +6,8 @@
 ## Collection
 Collection是集合框架的根接口。代表一系列对象的集合，对象被称为元素。
 一些集合允许重复的元素，另外一些不允许。一些集合元素是有序的，例外一些则不是。
-JDK没有提供Collection接口的直接实现类，但提供了Collection的子接口的实现类例如：Set，List。它的主要作用是用来传递集合，在需要最大通用性的场景操作集合。
+JDK没有提供Collection接口的直接实现类，但提供了Collection的子接口的实现类例如：Set，List。
+它的主要作用是用来传递集合，在需要最大通用性的场景操作集合。
 
 Bags 即 MultiSets，这种可能有重复元素的无序集合，应该直接实现这个接口。
 
@@ -47,4 +48,44 @@ Collection接口是Java集合框架的成员
 默认方法实现（继承或以其他方式）不应用任何同步协议。如果Collection实现具有特定的同步协议，则它必须覆盖默认实现以应用该协议。
 
 
-## thread-safe
+## Queue & Deque
+Queue
+1. 向队尾添加元素
+    - add     如果是有界队列，满了的话会抛出异常
+    - offer   允许添加失败
+2. 从队首移除元素
+    - remove  如果队首没有元素，抛出异常
+    - poll    如果队首没有元素，返回null
+3. 查看队首元素
+    - element 如果队首没有元素，抛出异常
+    - peak    如果队首没有元素，返回null
+Deque
+1. 向队首添加元素
+    - addFirst    报错
+    - offerFirst  允许添加失败
+2. 向队尾添加元素
+    - addLast     报错
+    - offerLast   允许添加失败
+3. 从队首移除元素
+    - removeFirst 报错
+    - pollFirst   返回null
+4. 从队尾移除元素
+    - removeLast  报错
+    - pollLast    返回null
+5. 查看队首元素
+    - getFirst    报错
+    - peakFirst   返回null
+6. 查看队尾元素
+    - getLast     报错
+    - peakLast    返回null
+7. 移除指定元素
+    - removeFirstOccurence 不存在指定元素时，不改变
+    - removeLastOccurence  不存在指定元素时，不改变
+8. stack方法
+    - push        同addFirst
+    - pop         同removeFirst
+
+从总体来看集合框架类的组织和实现
+- 面向接口
+- 通过抽象类来减少重复代码
+- 注释清晰
